@@ -10,7 +10,7 @@
     var gitalk = new Gitalk({
         clientID: `Ov23lihfIHMzkOPtIzWI`,
         clientSecret: `a7478f71d01fa9bd0bb585ebbd31e3d085ddbecb`,
-        repo: `YueqiangHe/basilisk_and_clang`,
+        repo: `basilisk_and_clang`,
         owner: 'YueqiangHe',
         admin: ['YueqiangHe'], 
         id: location.pathname, 
