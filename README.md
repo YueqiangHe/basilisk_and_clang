@@ -4,14 +4,15 @@
 
 - [利用clang前端让basilisk扩展到C++调研](#利用clang前端让basilisk扩展到c调研)
   - [1. 词法分析](#1-词法分析)
-      - [1.1. 对数字识别的差别（如int类型和float类型）](#11-对数字识别的差别如int类型和float类型)
-      - [1.2. 开头相同的运算符解析的差别（如"%="和"%"）](#12-开头相同的运算符解析的差别如和)
-      - [1.3. 对特殊字符的处理（如int,float等）](#13-对特殊字符的处理如intfloat等)
+    - [1.1 对数字识别的差别（如int类型和float类型）](#11-对数字识别的差别如int类型和float类型)
+    - [1.2 开头相同的运算符解析的差别（如"%="和"%"）](#12-开头相同的运算符解析的差别如和)
+    - [1.3 对普通的Identify的处理](#13-对普通的identify的处理)
+    - [1.4 对特殊字符串的处理（如int,float等）](#14-对特殊字符串的处理如intfloat等)
 
 
 ## 1. 词法分析
 **参考：basilisk参考basilisk/src/ast/tokens.lex，clang参考[lexer.cpp](https://clang.llvm.org/doxygen/Lexer_8cpp_source.html)**
-#### 1.1. 对数字识别的差别（如int类型和float类型）
+### 1.1 对数字识别的差别（如int类型和float类型）
 
 basilisk中的数字识别分为float和integer，而clang中的数字识别是对所有的数字进行识别\
 **basilisk:**
@@ -39,7 +40,7 @@ basilisk中的数字识别分为float和integer，而clang中的数字识别是�
     return LexNumericConstant(Result, CurPtr);
 ```
 
-#### 1.2. 开头相同的运算符解析的差别（如"%="和"%"）
+### 1.2 开头相同的运算符解析的差别（如"%="和"%"）
 
 basilisk中对单个字符的运算符与多个字符的运算符采用穷举法进行词法解析，而clang是对所有第一个字符相同的运算符相同进行词法分析。\
 （eg.如下图所示，basilisk的词法解析对"%="和"%"分为两种情况进行考虑，而clang对所有以"%"为开头的字符进行词法分析。其余也同理）\
@@ -86,12 +87,52 @@ case '%':
     break;
 ```
 
-#### 1.3. 对特殊字符的处理（如int,float等）
+### 1.3 对普通的Identify的处理
 
-basilisk中对特殊字符是单独采用一个词法分析进行匹配，而clang中是通过匹配关键字表从而进行匹配分析。
+basilisk是直接对已经构成的AST进行检索，而clang是对维护的表进行检索
 
 **basilisk:**
 basilisk对于特殊字符直接进行特殊处理。
+```cpp
+static int check_type (AstRoot * parse)
+{
+  if (parse->type_already_specified)
+    return IDENTIFIER;
+  
+  Ast * declaration = ast_identifier_declaration (parse->stack, yytext);
+  if (declaration) {
+    if (ast_is_typedef (declaration))
+      return TYPEDEF_NAME;
+    return IDENTIFIER;
+  }
+
+  return IDENTIFIER;
+}
+```
+**clang:**
+clang通过一个符号表（symbol table）进行查询
+```cpp
+case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G':
+  case 'H': case 'I': case 'J': case 'K':    /*'L'*/case 'M': case 'N':
+  case 'O': case 'P': case 'Q':    /*'R'*/case 'S': case 'T':    /*'U'*/
+  case 'V': case 'W': case 'X': case 'Y': case 'Z':
+  case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
+  case 'h': case 'i': case 'j': case 'k': case 'l': case 'm': case 'n':
+  case 'o': case 'p': case 'q': case 'r': case 's': case 't':    /*'u'*/
+  case 'v': case 'w': case 'x': case 'y': case 'z':
+  case '_':
+    // Notify MIOpt that we read a non-whitespace/non-comment token.
+    MIOpt.ReadToken();
+    return LexIdentifierContinue(Result, CurPtr);
+```
+Clang 中的标识符解析函数 LexIdentifierContinue 解析出标识符的整个内容后，会将该标识符交给预处理器中的 标识符表（identifier table） 进行查找：`const IdentifierInfo *II = PP->LookUpIdentifierInfo(Result)`;\
+`LookUpIdentifierInfo`(Result) 会查找当前标识符是否是关键字或者是是否为已经定义的字符。
+
+### 1.4 对特殊字符串的处理（如int,float等）
+basilisk对于每个特殊字符有单独匹配的词法分析，而clang直接对Identify进行处理，对于特殊字符（如int,float）这些标准 C/C++ 关键字会被预先加入到符号表中。Clang 通过一个称为 IdentifierTable 的结构来管理所有的标识符。这个表不仅包含变量名、函数名，还包含所有的关键字，如 int、float 等。
+
+**basilisk:**
+这些特殊的字符都有单独匹配的词法分析。
 ```lex
 "auto"					{ SAST(AUTO); }
 "break"					{ SAST(BREAK); }
@@ -127,37 +168,11 @@ basilisk对于特殊字符直接进行特殊处理。
 "void"					{ SAST(VOID); }
 "volatile"				{ SAST(VOLATILE); }
 "while"					{ SAST(WHILE); }
-"_Alignas"                              { SAST(ALIGNAS); }
-"_Alignof"                              { SAST(ALIGNOF); }
-"_Atomic"                               { SAST(ATOMIC); }
-"_Bool"                                 { SAST(BOOL); }
-"_Complex"                              { SAST(COMPLEX); }
-"complex"                               { SAST(COMPLEX); }
-"_Generic"                              { SAST(GENERIC); }
-"_Imaginary"                            { SAST(IMAGINARY); }
-"_Noreturn"                             { SAST(NORETURN); }
-"_Static_assert"                        { SAST(STATIC_ASSERT); }
-"_Thread_local"                         { SAST(THREAD_LOCAL); }
-"__func__"                              { SAST(FUNC_NAME); }
+......
 ```
-**clang:**
-clang对于任意的Indentify直接进行处理，再去查表查看是否为关键字
-```cpp
-case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G':
-  case 'H': case 'I': case 'J': case 'K':    /*'L'*/case 'M': case 'N':
-  case 'O': case 'P': case 'Q':    /*'R'*/case 'S': case 'T':    /*'U'*/
-  case 'V': case 'W': case 'X': case 'Y': case 'Z':
-  case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
-  case 'h': case 'i': case 'j': case 'k': case 'l': case 'm': case 'n':
-  case 'o': case 'p': case 'q': case 'r': case 's': case 't':    /*'u'*/
-  case 'v': case 'w': case 'x': case 'y': case 'z':
-  case '_':
-    // Notify MIOpt that we read a non-whitespace/non-comment token.
-    MIOpt.ReadToken();
-    return LexIdentifierContinue(Result, CurPtr);
-```
-Clang 中的标识符解析函数 LexIdentifierContinue 解析出标识符的整个内容后，会将该标识符交给预处理器中的 标识符表（identifier table） 进行查找：`const IdentifierInfo *II = PP->LookUpIdentifierInfo(Result)`;\
-`LookUpIdentifierInfo`(Result) 会查找当前标识符是否是一个关键字（如 int、float 等）。
+**clang:**\
+当 Clang 的词法分析器遇到类似 int、float 这样的关键字时，它会调用 LookUpIdentifierInfo() 函数，查询符号表中的条目。这个函数会返回一个 IdentifierInfo 对象，该对象包含标识符的相关信息，如它是否是一个关键字、是否是 typedef、是否是宏等。(见[1.3 对普通的Identify的处理](#13-对普通的identify的处理))
+
 
 <!-- Gitalk 评论 start -->
 <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
