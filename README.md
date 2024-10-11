@@ -9,7 +9,7 @@
 
 
 ## 1. 词法分析
-
+**参考：basilisk参考basilisk/src/ast/tokens.lex，clang参考[lexer.cpp](https://clang.llvm.org/doxygen/Lexer_8cpp_source.html)**
 #### 1.1. 对数字识别的差别
 
 basilisk中的数字识别分为float和integer，而clang中的数字识别是对所有的数字进行识别\
