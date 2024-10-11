@@ -7,7 +7,8 @@
     - [1.1 对数字识别的差别（如int类型和float类型）](#11-对数字识别的差别如int类型和float类型)
     - [1.2 开头相同的运算符解析的差别（如"%="和"%"）](#12-开头相同的运算符解析的差别如和)
     - [1.3 对普通的Identify的处理](#13-对普通的identify的处理)
-    - [1.4 对特殊字符串的处理（如int,float等）](#14-对特殊字符串的处理如intfloat等)
+    - [1.4 对特殊Identify的处理（如int,float等）](#14-对特殊identify的处理如intfloat等)
+    - [1.5 对于字符串的分析方式](#15-对于字符串的分析方式)
 
 
 ## 1. 词法分析
@@ -128,7 +129,7 @@ case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G':
 Clang 中的标识符解析函数 LexIdentifierContinue 解析出标识符的整个内容后，会将该标识符交给预处理器中的 标识符表（identifier table） 进行查找：`const IdentifierInfo *II = PP->LookUpIdentifierInfo(Result)`;\
 `LookUpIdentifierInfo`(Result) 会查找当前标识符是否是关键字或者是是否为已经定义的字符。
 
-### 1.4 对特殊字符串的处理（如int,float等）
+### 1.4 对特殊Identify的处理（如int,float等）
 basilisk对于每个特殊字符有单独匹配的词法分析，而clang直接对Identify进行处理，对于特殊字符（如int,float）这些标准 C/C++ 关键字会被预先加入到符号表中。Clang 通过一个称为 IdentifierTable 的结构来管理所有的标识符。这个表不仅包含变量名、函数名，还包含所有的关键字，如 int、float 等。
 
 **basilisk:**
@@ -173,7 +174,72 @@ basilisk对于每个特殊字符有单独匹配的词法分析，而clang直接�
 **clang:**\
 当 Clang 的词法分析器遇到类似 int、float 这样的关键字时，它会调用 LookUpIdentifierInfo() 函数，查询符号表中的条目。这个函数会返回一个 IdentifierInfo 对象，该对象包含标识符的相关信息，如它是否是一个关键字、是否是 typedef、是否是宏等。(见[1.3 对普通的Identify的处理](#13-对普通的identify的处理))
 
+### 1.5 对于字符串的分析方式
+总体来说，在字符串分析方面两者分析步骤差异不大\
+但是basilisk通过在字符串中标注u/U/L等来表示字符编码方式，对整体的字符串进行分析，而clang是读入前缀如u/U/L，再根据下一个字符是否为"进行分析\
+**basilisk:**\
+前缀种类 包括 u8、u、U 和 L，它们分别表示 UTF-8、UTF-16、UTF-32 和宽字符字符串字面量。
+```lex
+SP  (u8|u|U|L)
+({SP}?\"([^"\\\n]|{ES})*\"{WS}*)+	{ SAST(STRING_LITERAL); }
+```
+**clang:**\
+clang只对以"开头的字符串进行单独举例，其余都是在以前缀为开头的字符串的case里进行分析,作为一个参数在`bool Lexer::LexStringLiteral(Token &Result, const char *CurPtr,
+                             tok::TokenKind Kind)`的最后一个参数中显示。\
+eg:
+```cpp
+  // Identifier (e.g., uber), or
+  // UTF-8 (C23/C++17) or UTF-16 (C11/C++11) character literal, or
+  // UTF-8 or UTF-16 string literal (C11/C++11).
+  case 'u':
+    // Notify MIOpt that we read a non-whitespace/non-comment token.
+    MIOpt.ReadToken();
+ 
+    if (LangOpts.CPlusPlus11 || LangOpts.C11) {
+      Char = getCharAndSize(CurPtr, SizeTmp);
+ 
+      // UTF-16 string literal
+      if (Char == '"')
+        return LexStringLiteral(Result, ConsumeChar(CurPtr, SizeTmp, Result),
+                                tok::utf16_string_literal);
 
+ 
+      if (Char == '8') {
+        char Char2 = getCharAndSize(CurPtr + SizeTmp, SizeTmp2);
+ 
+        // UTF-8 string literal
+        if (Char2 == '"')
+          return LexStringLiteral(Result,
+                               ConsumeChar(ConsumeChar(CurPtr, SizeTmp, Result),
+                                           SizeTmp2, Result),
+                               tok::utf8_string_literal);
+
+  case 'U': // Identifier (e.g. Uber) or C11/C++11 UTF-32 string literal
+    // Notify MIOpt that we read a non-whitespace/non-comment token.
+    MIOpt.ReadToken();
+ 
+    if (LangOpts.CPlusPlus11 || LangOpts.C11) {
+      Char = getCharAndSize(CurPtr, SizeTmp);
+ 
+      // UTF-32 string literal
+      if (Char == '"')
+        return LexStringLiteral(Result, ConsumeChar(CurPtr, SizeTmp, Result),
+                                tok::utf32_string_literal);
+ 
+      // UTF-32 character constant
+      if (Char == '\'')
+        return LexCharConstant(Result, ConsumeChar(CurPtr, SizeTmp, Result),
+                               tok::utf32_char_constant);
+ 
+      // UTF-32 raw string literal
+      if (Char == 'R' && LangOpts.RawStringLiterals &&
+          getCharAndSize(CurPtr + SizeTmp, SizeTmp2) == '"')
+        return LexRawStringLiteral(Result,
+                               ConsumeChar(ConsumeChar(CurPtr, SizeTmp, Result),
+                                           SizeTmp2, Result),
+                               tok::utf32_string_literal);
+    }
+```
 <!-- Gitalk 评论 start -->
 <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
 <script src="https://unpkg.com/gitalk@latest/dist/gitalk.min.js"></script> 
