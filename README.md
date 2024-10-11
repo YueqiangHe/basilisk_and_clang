@@ -9,6 +9,10 @@
     - [1.3 对普通的Identify的处理](#13-对普通的identify的处理)
     - [1.4 对特殊Identify的处理（如int,float等）](#14-对特殊identify的处理如intfloat等)
     - [1.5 对于字符串的分析方式](#15-对于字符串的分析方式)
+    - [1.6 OMP(OpenMP)](#16-ompopenmp)
+    - [1.7 file\_line（文件行号指示器，例如 `#line 42 "example.c"`）](#17-file_line文件行号指示器例如-line-42-examplec)
+    - [1.8 宏定义（@def）](#18-宏定义def)
+    - [1.9 foreach与foreach\_（basilisk中的iterators）](#19-foreach与foreach_basilisk中的iterators)
 
 
 ## 1. 词法分析
@@ -240,6 +244,102 @@ eg:
                                tok::utf32_string_literal);
     }
 ```
+
+### 1.6 OMP(OpenMP)
+在basilisk的GPU中找到下面一段话：\
+`Note that this could even be implemented just as a new definition of the macros OMP_PARALLEL(), OMP() and OMP_END_PARALLEL(). However, as pointed out in the blog, without some control of data layout, performance would probably be terrible.`\
+猜测OMP是用于并行计算的函数，因此对于OMP的解析只需要检查括号的配对，但是不能用正规式来表达括号配对，
+于是在Lex中写了一个函数进行检验，这样就实现了对以OMP为开头的这些函数的分析。
+```lex
+^[ \t]*OMP[ \t]*\(	                { ompreproc(); }
+"__attribute__"{WS}*\(                  { ompreproc(); }
+
+static void ompreproc (void)
+{
+  int c, scope = 1;
+  while ((c = input()) != 0) {
+    if (c == '(')
+      scope++;
+    else if (c == ')') {
+      scope--;
+      if (scope == 0)
+	return;
+    }
+  }
+  //  yyerror ("unterminated OMP");
+}
+```
+相比于 Clang 对 OpenMP 的复杂处理，Basilisk C 采用了一种更简化的方式，可能basilisk只有这样的一种写法。
+
+
+### 1.7 file_line（文件行号指示器，例如 `#line 42 "example.c"`）
+basilisk中对行号指示器处理的比较简单，file_line() 函数解析这些行号指示器，并将行号和文件名信息存储到相应的结构中。这个机制在处理预处理器生成的文件时非常有用，因为它允许跟踪文件的源代码位置，特别是在宏展开或文件包含的情况下。\
+```lex
+^[ \t]*#[ \t]+[0-9]+[ \t]+{STRING}.*    { file_line (parse, yytext); }
+
+static void file_line (AstRoot * parse, const char * text)
+{
+  char * s = strchr (text, '#') + 1;
+  yylineno = atoi(s) - 1;
+  s = strchr (s, '"') + 1;
+  char * end = strchr (s, '"');
+  parse->file = allocate (parse->alloc, end - s + 1);
+  strncpy ((char *) parse->file, s, end - s);
+  //  fprintf (stderr, "%s: \"%s\" %d\n", text, file, yylineno);
+}
+```
+
+### 1.8 宏定义（@def）
+在 Basilisk C 中，使用 @def 来定义复杂的宏结构。最后需要检测`@def ... @`。\
+因此Lex中的检测部分是这样的：
+```lex
+^[ \t]*@[ \t]*def[ \t].*                { bpreproc(); }
+
+static void bpreproc (void)
+{
+  int c;
+  while ((c = input()) != 0)
+    if (c == '@')
+      return;
+  //  yyerror ("unterminated @def");
+}
+```
+这与C语言中定义宏的方式不同，Clang 的预处理器处理 #define、#include、#pragma 等标准预处理指令，而不像 Basilisk C 通过 @def 这样的自定义语法来处理预处理指令。
+
+### 1.9 foreach与foreach_（basilisk中的iterators）
+Basilisk C 的 foreach 是一种特定于该语言的控制结构，用于遍历网格中的单元、维度或邻居。在 Basilisk C 的词法分析器中，通过正则表达式识别不同形式的 foreach，然后根据不同的遍历需求生成相应的 Token。\
+这与clang的词法分析不同，clang对所有首字母相同的进行分析，再进行分类，而且clang没有以foreach_{L}{A}*(foreach_+Identify)的用法。倘若有也只有类似`foreach Identify`的用法，clang不会特意为特定前缀（如 foreach_）做专门的处理。\
+**basilisk:**
+```lex
+"foreach_blockf" |
+"foreach_block" |
+"foreach_child" |
+"foreach_neighbor"                      { SAST(FOREACH_INNER); }
+
+"foreach_dimension"			{ SAST(FOREACH_DIMENSION); }
+
+"foreach" |
+"foreach_"{L}{A}*                       { SAST(FOREACH); }
+```
+**clang:**\
+clang中只有对以f开头的标识符进行整体分析。同时并没有同一前缀进行专门处理。
+clang的Indentify处理函数`bool Lexer::LexIdentifierContinue(Token &Result, const char *CurPtr)`中只有对特殊的字符进行识别。
+```cpp
+// C99 6.4.2: Identifiers.
+  case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G':
+  case 'H': case 'I': case 'J': case 'K':    /*'L'*/case 'M': case 'N':
+  case 'O': case 'P': case 'Q':    /*'R'*/case 'S': case 'T':    /*'U'*/
+  case 'V': case 'W': case 'X': case 'Y': case 'Z':
+  case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
+  case 'h': case 'i': case 'j': case 'k': case 'l': case 'm': case 'n':
+  case 'o': case 'p': case 'q': case 'r': case 's': case 't':    /*'u'*/
+  case 'v': case 'w': case 'x': case 'y': case 'z':
+  case '_':
+    // Notify MIOpt that we read a non-whitespace/non-comment token.
+    MIOpt.ReadToken();
+    return LexIdentifierContinue(Result, CurPtr);
+```
+
 <!-- Gitalk 评论 start -->
 <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
 <script src="https://unpkg.com/gitalk@latest/dist/gitalk.min.js"></script> 
