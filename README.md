@@ -323,7 +323,7 @@ Basilisk C 的 foreach 是一种特定于该语言的控制结构，用于遍历
 ```
 **clang:**\
 clang中只有对以f开头的标识符进行整体分析。同时并没有同一前缀进行专门处理。
-clang的Indentify处理函数`bool Lexer::LexIdentifierContinue(Token &Result, const char *CurPtr)`中只有对特殊的字符进行识别。
+clang的Indentify处理函数`bool Lexer::LexIdentifierContinue(Token &Result, const char *CurPtr)`中只有对特殊的Identify进行识别。
 ```cpp
 // C99 6.4.2: Identifiers.
   case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G':
