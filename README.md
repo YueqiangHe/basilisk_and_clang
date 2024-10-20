@@ -18,7 +18,8 @@
     - [2.1 external\_declaration](#21-external_declaration)
       - [2.1.1 basilisk的扩展](#211-basilisk的扩展)
       - [2.1.2 处理function\_definition和declaration的差别](#212-处理function_definition和declaration的差别)
-    - [2.2 declaration](#22-declaration)
+    - [2.2 declaration(static\_assert\_declaration)](#22-declarationstatic_assert_declaration)
+    - [2.3 function\_definition](#23-function_definition)
 
 
 ## 1. 词法分析
@@ -395,8 +396,67 @@ external_declaration
   }
 ```
 
-### 2.2 declaration
+### 2.2 declaration(static_assert_declaration)
+在declaration中，basilisk把static_assert_declaration加入语法分析，而clang没有。\
+clang对static_assert_declaration的定义在`Parser::ParseExternalDeclaration(ParsedAttributes &Attrs,
+                                 ParsedAttributes &DeclSpecAttrs,
+                                 ParsingDeclSpec *DS)`中。\
+**basilisk:**
+```yacc
+declaration
+        : declaration_specifiers ';' type_not_specified                        { ast_push_declaration (parse->stack, $$); }
+	| declaration_specifiers init_declarator_list ';' type_not_specified   { ast_push_declaration (parse->stack, $$); }
+	| static_assert_declaration
+	;
+```
+**clang:**
+```cpp
+///       declaration: [C99 6.7]
+///         declaration-specifiers init-declarator-list[opt] ';'
+```
+```cpp
+Parser::ParseExternalDeclaration(ParsedAttributes &Attrs,
+                                 ParsedAttributes &DeclSpecAttrs,
+                                 ParsingDeclSpec *DS) {
+  DestroyTemplateIdAnnotationsRAIIObj CleanupRAII(*this);
+  ParenBraceBracketBalancer BalancerRAIIObj(*this);
+ 
+  if (PP.isCodeCompletionReached()) {
+    cutOffParsing();
+    return nullptr;
+  }
+ 
+  Decl *SingleDecl = nullptr;
+  switch (Tok.getKind()) {
+  ......
+  case tok::kw_static_assert:
+  case tok::kw__Static_assert:
+    // A function definition cannot start with any of these keywords.
+    {
+      SourceLocation DeclEnd;
+      return ParseDeclaration(DeclaratorContext::File, DeclEnd, Attrs,
+                              DeclSpecAttrs);
+    }
+```
 
+### 2.3 function_definition
+basilisk和clang的语法分析不同，见下：\
+**basilisk:**
+```yacc
+function_declaration
+        : declaration_specifiers declarator { ast_push_function_definition (parse->stack, $2);  }
+	;
+	
+function_definition
+        : function_declaration declaration_list compound_statement
+```
+**clang:**
+```cpp
+///       function-definition: [C99 6.9.1]
+///         decl-specs      declarator declaration-list[opt] compound-statement
+```
+可见，basilisk把declaration_specifiers declarator合并成function_declaration处理，是为了方便添加到AST栈中。\
+而clang并没有把这两个语法集中处理，而是直接使用decl-specs declarator这一语法。
 
 <!-- Gitalk 评论 start -->
 <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
