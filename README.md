@@ -13,6 +13,8 @@
     - [1.7 file\_line（文件行号指示器，例如 `#line 42 "example.c"`）](#17-file_line文件行号指示器例如-line-42-examplec)
     - [1.8 宏定义（@def）](#18-宏定义def)
     - [1.9 foreach与foreach\_（basilisk中的iterators）](#19-foreach与foreach_basilisk中的iterators)
+    - [1.10 部分多个词的词法分析( new vertex scalar , new face vertor , new symmetric tensor , vertex scalar , face vertor , symmetric tensor)](#110-部分多个词的词法分析-new-vertex-scalar--new-face-vertor--new-symmetric-tensor--vertex-scalar--face-vertor--symmetric-tensor)
+  - [2. 语法分析](#2-语法分析)
 
 
 ## 1. 词法分析
@@ -340,6 +342,21 @@ clang的Indentify处理函数`bool Lexer::LexIdentifierContinue(Token &Result, c
     return LexIdentifierContinue(Result, CurPtr);
 ```
 
+### 1.10 部分多个词的词法分析( new vertex scalar , new face vertor , new symmetric tensor , vertex scalar , face vertor , symmetric tensor)
+basilisk通过正则表达式对这些进行识别，而clang在词法分析只是单独处理每个词(利用switch case对每个词的首字母进行分别处理)，在语法分析部分再整体处理这些词。\
+这与basilisk的组合少，clang的new组合多有关。\
+**basilisk:**
+```lex
+"new"{WS}+("vertex"{WS}+)?"scalar"      { SAST(NEW_FIELD); }
+"new"{WS}+("face"{WS}+)?"vector"        { SAST(NEW_FIELD); }
+"new"{WS}+("symmetric"{WS}+)?"tensor"   { SAST(NEW_FIELD); }
+"vertex"{WS}+"scalar"                   { SAST(TYPEDEF_NAME); }
+"face"{WS}+"vector"                     { SAST(TYPEDEF_NAME); }
+"symmetric"{WS}+"tensor"                { SAST(TYPEDEF_NAME); }
+```
+
+## 2. 语法分析
+对basilisk主要参考文件为basilisk/src/ast/yacc，对clang主要参考文件为[Parse.cpp](https://clang.llvm.org/doxygen/Parse_2Parser_8cpp_source.html)
 
 
 <!-- Gitalk 评论 start -->
