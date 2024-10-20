@@ -15,6 +15,10 @@
     - [1.9 foreach与foreach\_（basilisk中的iterators）](#19-foreach与foreach_basilisk中的iterators)
     - [1.10 部分多个词的词法分析( new vertex scalar , new face vertor , new symmetric tensor , vertex scalar , face vertor , symmetric tensor)](#110-部分多个词的词法分析-new-vertex-scalar--new-face-vertor--new-symmetric-tensor--vertex-scalar--face-vertor--symmetric-tensor)
   - [2. 语法分析](#2-语法分析)
+    - [2.1 external\_declaration](#21-external_declaration)
+      - [2.1.1 basilisk的扩展](#211-basilisk的扩展)
+      - [2.1.2 处理function\_definition和declaration的差别](#212-处理function_definition和declaration的差别)
+    - [2.2 declaration](#22-declaration)
 
 
 ## 1. 词法分析
@@ -357,6 +361,41 @@ basilisk通过正则表达式对这些进行识别，而clang在词法分析只�
 
 ## 2. 语法分析
 对basilisk主要参考文件为basilisk/src/ast/yacc，对clang主要参考文件为[Parse.cpp](https://clang.llvm.org/doxygen/Parse_2Parser_8cpp_source.html)
+
+### 2.1 external_declaration
+#### 2.1.1 basilisk的扩展
+相比于clang的external_declaration,basilisk的一些解析更加简单，同时也加上了一些basilisk c特殊的部分。
+**basilisk:**
+```yacc
+  external_declaration
+	: function_definition
+	| declaration
+	| macro_statement /* Basilisk C extension */
+	| event_definition /* Basilisk C extension */
+	| boundary_definition /* Basilisk C extension */
+	| external_foreach_dimension /* Basilisk C extension */
+	| attribute /* Basilisk C extension */
+	| error compound_statement              { $1->sym = YYSYMBOL_YYerror; }
+	;
+```
+#### 2.1.2 处理function_definition和declaration的差别
+在external_declaration中，clang并没有把二者分开处理，而basilisk把二者分开识别处理。\
+最后在`Parser::DeclGroupPtrTy Parser::ParseDeclOrFunctionDefInternal`中通过识别tokens来识别不同。\
+**basilisk:**
+```yacc
+external_declaration
+	: function_definition
+	| declaration
+```
+**clang:**
+```cpp
+// We can't tell whether this is a function-definition or declaration yet.
+    if (!SingleDecl)
+      return ParseDeclarationOrFunctionDefinition(Attrs, DeclSpecAttrs, DS);
+  }
+```
+
+### 2.2 declaration
 
 
 <!-- Gitalk 评论 start -->
