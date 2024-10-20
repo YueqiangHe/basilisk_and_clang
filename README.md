@@ -20,6 +20,8 @@
       - [2.1.2 处理function\_definition和declaration的差别](#212-处理function_definition和declaration的差别)
     - [2.2 declaration(static\_assert\_declaration)](#22-declarationstatic_assert_declaration)
     - [2.3 function\_definition](#23-function_definition)
+    - [2.4 basilisk 扩展](#24-basilisk-扩展)
+      - [2.4.1 关系图](#241-关系图)
 
 
 ## 1. 词法分析
@@ -457,6 +459,178 @@ function_definition
 ```
 可见，basilisk把declaration_specifiers declarator合并成function_declaration处理，是为了方便对AST栈进行操作。\
 而clang并没有把这两个语法集中处理，而是直接使用decl-specs declarator这一语法。
+
+
+### 2.4 basilisk 扩展
+
+#### 2.4.1 关系图
+下面是Basilisk C grammar extensions 的语法关系图。
+```plantuml
+@startuml
+class basilisk_statements {
+    +macro_statement
+    +foreach_statement
+    +foreach_inner_statement
+    +foreach_dimension_statement
+    +forin_declaration_statement
+    +forin_statement
+}
+
+class macro_statement {
+    +function_call
+    +compound_statement
+}
+
+class foreach_statement {
+    +FOREACH '(' ')'
+    +FOREACH '(' foreach_parameters ')'
+}
+
+class foreach_parameters {
+    +foreach_parameter
+    +foreach_parameters ',' foreach_parameter
+}
+
+class foreach_parameter {
+    +assignment_expression
+    +reduction_list
+}
+
+class reduction_list {
+    +reduction
+    +reduction_list
+}
+
+class reduction {
+    +REDUCTION '(' reduction_operator ':' reduction_array ')'
+}
+
+class reduction_operator {
+    +generic_identifier
+    +'+'
+    +OR_OP
+}
+
+class reduction_array {
+    +generic_identifier
+    +generic_identifier '[' ':' expression ']'
+}
+
+class foreach_inner_statement {
+    +FOREACH_INNER '(' ')'
+    +FOREACH_INNER '(' expression ')'
+}
+
+class foreach_dimension_statement {
+    +FOREACH_DIMENSION '(' ')'
+    +FOREACH_DIMENSION '(' I_CONSTANT ')'
+}
+
+class forin_declaration_statement {
+    +for_scope '(' declaration_specifiers declarator IDENTIFIER forin_arguments ')'
+}
+
+class forin_statement {
+    +for_scope '(' expression IDENTIFIER forin_arguments ')'
+}
+
+class forin_arguments {
+    +expression
+    +postfix_initializer
+}
+
+class event_definition {
+    +generic_identifier generic_identifier '(' event_parameters ')' statement
+}
+
+class event_parameters {
+    +event_parameter
+    +event_parameters
+    +event_parameters ';' event_parameter
+}
+
+class event_parameter {
+    +conditional_expression
+    +unary_expression assignment_operator conditional_expression
+    +unary_expression assignment_operator postfix_initializer
+}
+
+class boundary_definition {
+    +assignment_expression ';'
+}
+
+class external_foreach_dimension {
+    +FOREACH_DIMENSION '(' ')' function_definition
+    +FOREACH_DIMENSION '(' I_CONSTANT ')' function_definition
+}
+
+class attribute {
+    +generic_identifier '{' struct_declaration_list '}'
+}
+
+class new_field {
+    +NEW_FIELD
+    +NEW_FIELD '[' postfix_expression ']'
+}
+
+basilisk_statements --> macro_statement
+basilisk_statements --> foreach_statement
+basilisk_statements --> foreach_inner_statement
+basilisk_statements --> foreach_dimension_statement
+basilisk_statements --> forin_declaration_statement
+basilisk_statements --> forin_statement
+
+macro_statement --> function_call
+macro_statement --> compound_statement
+
+foreach_statement --> FOREACH
+foreach_statement --> foreach_parameters
+
+foreach_parameters --> foreach_parameter
+foreach_parameters --> foreach_parameters
+
+foreach_parameter --> assignment_expression
+foreach_parameter --> reduction_list
+
+reduction_list --> reduction
+reduction_list --> reduction_list
+
+reduction --> reduction_operator
+reduction --> reduction_array
+
+reduction_operator --> generic_identifier
+reduction_operator --> "+"
+reduction_operator --> OR_OP
+
+reduction_array --> generic_identifier
+reduction_array --> generic_identifier
+
+foreach_inner_statement --> FOREACH_INNER
+foreach_inner_statement --> expression
+
+foreach_dimension_statement --> FOREACH_DIMENSION
+foreach_dimension_statement --> I_CONSTANT
+
+forin_declaration_statement --> for_scope
+forin_statement --> for_scope
+
+forin_arguments --> expression
+forin_arguments --> postfix_initializer
+
+event_definition --> generic_identifier
+event_definition --> event_parameters
+
+event_parameters --> event_parameter
+event_parameters --> event_parameters
+
+event_parameter --> conditional_expression
+event_parameter --> unary_expression
+event_parameter --> postfix_initializer
+
+external_foreach_dimension --> function_definition
+@enduml
+
+```
 
 <!-- Gitalk 评论 start -->
 <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
