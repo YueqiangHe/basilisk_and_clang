@@ -455,7 +455,7 @@ function_definition
 ///       function-definition: [C99 6.9.1]
 ///         decl-specs      declarator declaration-list[opt] compound-statement
 ```
-可见，basilisk把declaration_specifiers declarator合并成function_declaration处理，是为了方便添加到AST栈中。\
+可见，basilisk把declaration_specifiers declarator合并成function_declaration处理，是为了方便对AST栈进行操作。\
 而clang并没有把这两个语法集中处理，而是直接使用decl-specs declarator这一语法。
 
 <!-- Gitalk 评论 start -->
