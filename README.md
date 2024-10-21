@@ -15,13 +15,14 @@
     - [1.9 foreach与foreach\_（basilisk中的iterators）](#19-foreach与foreach_basilisk中的iterators)
     - [1.10 部分多个词的词法分析( new vertex scalar , new face vertor , new symmetric tensor , vertex scalar , face vertor , symmetric tensor)](#110-部分多个词的词法分析-new-vertex-scalar--new-face-vertor--new-symmetric-tensor--vertex-scalar--face-vertor--symmetric-tensor)
   - [2. 语法分析](#2-语法分析)
-    - [2.1 external\_declaration](#21-external_declaration)
-      - [2.1.1 basilisk的扩展](#211-basilisk的扩展)
-      - [2.1.2 处理function\_definition和declaration的差别](#212-处理function_definition和declaration的差别)
-    - [2.2 declaration(static\_assert\_declaration)](#22-declarationstatic_assert_declaration)
-    - [2.3 function\_definition](#23-function_definition)
-    - [2.4 basilisk 扩展](#24-basilisk-扩展)
-      - [2.4.1 关系图](#241-关系图)
+    - [2.1 translation\_unit(错误处理)](#21-translation_unit错误处理)
+    - [2.2 external\_declaration](#22-external_declaration)
+      - [2.2.1 basilisk的扩展](#221-basilisk的扩展)
+      - [2.2.2 处理function\_definition和declaration的差别](#222-处理function_definition和declaration的差别)
+    - [2.3 declaration(static\_assert\_declaration)](#23-declarationstatic_assert_declaration)
+    - [2.4 function\_definition](#24-function_definition)
+    - [2.5 basilisk 扩展](#25-basilisk-扩展)
+      - [2.5.1 关系图](#251-关系图)
 
 
 ## 1. 词法分析
@@ -365,8 +366,27 @@ basilisk通过正则表达式对这些进行识别，而clang在词法分析只�
 ## 2. 语法分析
 对basilisk主要参考文件为basilisk/src/ast/yacc，对clang主要参考文件为[Parse.cpp](https://clang.llvm.org/doxygen/Parse_2Parser_8cpp_source.html)
 
-### 2.1 external_declaration
-#### 2.1.1 basilisk的扩展
+### 2.1 translation_unit(错误处理)
+相比于clang，basilisk添加了错误处理的部分，在clang中存在错误恢复函数(如`static bool HasFlagsSet(Parser::SkipUntilFlags L, Parser::SkipUntilFlags R)`)，错误检测函数(如`Diag(Tok, diag::err_expected_semi_after_statement);`)，对错误有一定的处理能力(如`bool Parser::SkipUntil(ArrayRef<tok::TokenKind> Toks, SkipUntilFlags Flags)`)，且clang对错误的分类较多，因此没有放在语法分析之中。\
+**basilisk:**
+```yacc
+translation_unit
+        : external_declaration
+	| translation_unit external_declaration	
+        | translation_unit error ';'  { $2->sym = YYSYMBOL_YYerror; }
+        | translation_unit error '}'  { $2->sym = YYSYMBOL_YYerror; }
+        | translation_unit error ')'  { $2->sym = YYSYMBOL_YYerror; }
+        ;
+```
+**clang:**
+```cpp
+///   translation-unit:
+/// [C]     external-declaration
+/// [C]     translation-unit external-declaration
+```
+
+### 2.2 external_declaration
+#### 2.2.1 basilisk的扩展
 相比于clang的external_declaration,basilisk的一些解析更加简单，同时也加上了一些basilisk c特殊的部分。
 **basilisk:**
 ```yacc
@@ -381,7 +401,7 @@ basilisk通过正则表达式对这些进行识别，而clang在词法分析只�
 	| error compound_statement              { $1->sym = YYSYMBOL_YYerror; }
 	;
 ```
-#### 2.1.2 处理function_definition和declaration的差别
+#### 2.2.2 处理function_definition和declaration的差别
 在external_declaration中，clang并没有把二者分开处理，而basilisk把二者分开识别处理。\
 最后在`Parser::DeclGroupPtrTy Parser::ParseDeclOrFunctionDefInternal`中通过识别tokens来识别不同。\
 **basilisk:**
@@ -398,7 +418,7 @@ external_declaration
   }
 ```
 
-### 2.2 declaration(static_assert_declaration)
+### 2.3 declaration(static_assert_declaration)
 在declaration中，basilisk把static_assert_declaration加入语法分析，而clang没有。\
 clang对static_assert_declaration的定义在`Parser::ParseExternalDeclaration(ParsedAttributes &Attrs,
                                  ParsedAttributes &DeclSpecAttrs,
@@ -441,7 +461,7 @@ Parser::ParseExternalDeclaration(ParsedAttributes &Attrs,
     }
 ```
 
-### 2.3 function_definition
+### 2.4 function_definition
 basilisk和clang的语法分析不同，见下：\
 **basilisk:**
 ```yacc
@@ -461,9 +481,9 @@ function_definition
 而clang并没有把这两个语法集中处理，而是直接使用decl-specs declarator这一语法。
 
 
-### 2.4 basilisk 扩展
+### 2.5 basilisk 扩展
 
-#### 2.4.1 关系图
+#### 2.5.1 关系图
 下面是Basilisk C grammar extensions 的语法关系图。\
 [图片地址](picture/basilisk_puml.png)
 ![basilisk picture](picture/basilisk_puml.png)
