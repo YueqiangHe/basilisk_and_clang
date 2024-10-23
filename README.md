@@ -150,7 +150,7 @@ case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G':
     return LexIdentifierContinue(Result, CurPtr);
 ```
 Clang 中的标识符解析函数 LexIdentifierContinue 解析出标识符的整个内容后，会将该标识符交给预处理器中的 标识符表（identifier table） 进行查找：`const IdentifierInfo *II = PP->LookUpIdentifierInfo(Result)`;\
-`LookUpIdentifierInfo`(Result) 会查找当前标识符是否是关键字或者是是否为已经定义的字符。
+`LookUpIdentifierInfo`(Result) 会查找当前标识符是否是关键字或者是是否为已经定义的字符。\
 [返回目录](#目录)
 
 ### 1.4 对特殊Identify的处理（如int,float等）
@@ -196,7 +196,7 @@ basilisk对于每个特殊字符有单独匹配的词法分析，而clang直接�
 ......
 ```
 **clang:**\
-当 Clang 的词法分析器遇到类似 int、float 这样的关键字时，它会调用 LookUpIdentifierInfo() 函数，查询符号表中的条目。这个函数会返回一个 IdentifierInfo 对象，该对象包含标识符的相关信息，如它是否是一个关键字、是否是 typedef、是否是宏等。(见[1.3 对普通的Identify的处理](#13-对普通的identify的处理))
+当 Clang 的词法分析器遇到类似 int、float 这样的关键字时，它会调用 LookUpIdentifierInfo() 函数，查询符号表中的条目。这个函数会返回一个 IdentifierInfo 对象，该对象包含标识符的相关信息，如它是否是一个关键字、是否是 typedef、是否是宏等。(见[1.3 对普通的Identify的处理](#13-对普通的identify的处理))\
 [返回目录](#目录)
 
 ### 1.5 对于字符串的分析方式
@@ -290,7 +290,7 @@ static void ompreproc (void)
   //  yyerror ("unterminated OMP");
 }
 ```
-相比于 Clang 对 OpenMP 的复杂处理，Basilisk C 采用了一种更简化的方式，可能basilisk只有这样的一种写法。
+相比于 Clang 对 OpenMP 的复杂处理，Basilisk C 采用了一种更简化的方式，可能basilisk只有这样的一种写法。\
 
 [返回目录](#目录)
 
@@ -328,7 +328,7 @@ static void bpreproc (void)
   //  yyerror ("unterminated @def");
 }
 ```
-这与C语言中定义宏的方式不同，Clang 的预处理器处理 #define、#include、#pragma 等标准预处理指令，而不像 Basilisk C 通过 @def 这样的自定义语法来处理预处理指令。
+这与C语言中定义宏的方式不同，Clang 的预处理器处理 #define、#include、#pragma 等标准预处理指令，而不像 Basilisk C 通过 @def 这样的自定义语法来处理预处理指令。\
 [返回目录](#目录)
 
 ### 1.9 foreach与foreach_（basilisk中的iterators）
@@ -385,7 +385,7 @@ basilisk通过正则表达式对这些进行识别，而clang在词法分析只�
 ## 2. 语法分析
 **对basilisk主要参考文件为basilisk/src/ast/yacc。\
 对clang主要参考文件夹为[Parse](https://clang.llvm.org/doxygen/dir_56d2d57cdd4ff12ce93058b4ec37b8e1.html)。\
-主要对[Parse.cpp](https://clang.llvm.org/doxygen/Parse_2Parser_8cpp_source.html),[ParseStmt.cpp](https://clang.llvm.org/doxygen/ParseStmt_8cpp_source.html)等文件进行参考。**
+主要对[Parse.cpp](https://clang.llvm.org/doxygen/Parse_2Parser_8cpp_source.html),[ParseStmt.cpp](https://clang.llvm.org/doxygen/ParseStmt_8cpp_source.html)等文件进行参考。**\
 
 [返回目录](#目录)
 
@@ -504,7 +504,7 @@ function_definition
 ///         decl-specs      declarator declaration-list[opt] compound-statement
 ```
 可见，basilisk把declaration_specifiers declarator合并成function_declaration处理，是为了方便对AST栈进行操作。\
-而clang并没有把这两个语法集中处理，而是直接使用decl-specs declarator这一语法。
+而clang并没有把这两个语法集中处理，而是直接使用decl-specs declarator这一语法。\
 [返回目录](#目录)
 
 ### 2.5 compound_statement
@@ -684,7 +684,7 @@ generic_identifier
 #### 2.10.1 关系图
 下面是Basilisk C grammar extensions 的语法关系图。\
 [图片地址](picture/basilisk_puml.png)
-![basilisk picture](picture/basilisk_puml.png)
+![basilisk picture](picture/basilisk_puml.png)\
 [返回目录](#目录)
 
 
