@@ -1,8 +1,9 @@
 # 利用clang前端让basilisk扩展到C++调研
 
 >本调研旨在评估basilisk的词法语法的分析过程。将其与clang的词法语法分析代码进行对比，从而对basilisk的迁移进行评估。
-
+### 目录
 - [利用clang前端让basilisk扩展到C++调研](#利用clang前端让basilisk扩展到c调研)
+    - [目录](#目录)
   - [1. 词法分析](#1-词法分析)
     - [1.1 对数字识别的差别（如int类型和float类型）](#11-对数字识别的差别如int类型和float类型)
     - [1.2 开头相同的运算符解析的差别（如"%="和"%"）](#12-开头相同的运算符解析的差别如和)
@@ -21,12 +22,18 @@
       - [2.2.2 处理function\_definition和declaration的差别](#222-处理function_definition和declaration的差别)
     - [2.3 declaration(static\_assert\_declaration)](#23-declarationstatic_assert_declaration)
     - [2.4 function\_definition](#24-function_definition)
-    - [2.5 basilisk 扩展](#25-basilisk-扩展)
-      - [2.5.1 关系图](#251-关系图)
+    - [2.5 compound\_statement](#25-compound_statement)
+    - [2.6 selection statement(对if语句分析的差异)](#26-selection-statement对if语句分析的差异)
+    - [2.7 iteration\_statement( basilisk的拓展以及分析的差异 )](#27-iteration_statement-basilisk的拓展以及分析的差异-)
+    - [2.8 jump-statement( goto中对identify处理的差异 )](#28-jump-statement-goto中对identify处理的差异-)
+    - [2.9 labeled-statement(对Identify处理的差异)](#29-labeled-statement对identify处理的差异)
+    - [2.10 basilisk 扩展](#210-basilisk-扩展)
+      - [2.10.1 关系图](#2101-关系图)
 
 
 ## 1. 词法分析
-**参考：basilisk参考basilisk/src/ast/tokens.lex，clang参考[lexer.cpp](https://clang.llvm.org/doxygen/Lexer_8cpp_source.html)**
+**参考：basilisk参考basilisk/src/ast/tokens.lex，
+clang参考[lexer.cpp](https://clang.llvm.org/doxygen/Lexer_8cpp_source.html)**
 ### 1.1 对数字识别的差别（如int类型和float类型）
 
 basilisk中的数字识别分为float和integer，而clang中的数字识别是对所有的数字进行识别\
@@ -54,6 +61,7 @@ basilisk中的数字识别分为float和integer，而clang中的数字识别是�
     MIOpt.ReadToken();
     return LexNumericConstant(Result, CurPtr);
 ```
+[返回目录](#目录)
 
 ### 1.2 开头相同的运算符解析的差别（如"%="和"%"）
 
@@ -101,6 +109,7 @@ case '%':
     }
     break;
 ```
+[返回目录](#目录)
 
 ### 1.3 对普通的Identify的处理
 
@@ -142,6 +151,7 @@ case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G':
 ```
 Clang 中的标识符解析函数 LexIdentifierContinue 解析出标识符的整个内容后，会将该标识符交给预处理器中的 标识符表（identifier table） 进行查找：`const IdentifierInfo *II = PP->LookUpIdentifierInfo(Result)`;\
 `LookUpIdentifierInfo`(Result) 会查找当前标识符是否是关键字或者是是否为已经定义的字符。
+[返回目录](#目录)
 
 ### 1.4 对特殊Identify的处理（如int,float等）
 basilisk对于每个特殊字符有单独匹配的词法分析，而clang直接对Identify进行处理，对于特殊字符（如int,float）这些标准 C/C++ 关键字会被预先加入到符号表中。Clang 通过一个称为 IdentifierTable 的结构来管理所有的标识符。这个表不仅包含变量名、函数名，还包含所有的关键字，如 int、float 等。
@@ -187,6 +197,7 @@ basilisk对于每个特殊字符有单独匹配的词法分析，而clang直接�
 ```
 **clang:**\
 当 Clang 的词法分析器遇到类似 int、float 这样的关键字时，它会调用 LookUpIdentifierInfo() 函数，查询符号表中的条目。这个函数会返回一个 IdentifierInfo 对象，该对象包含标识符的相关信息，如它是否是一个关键字、是否是 typedef、是否是宏等。(见[1.3 对普通的Identify的处理](#13-对普通的identify的处理))
+[返回目录](#目录)
 
 ### 1.5 对于字符串的分析方式
 总体来说，在字符串分析方面两者分析步骤差异不大\
@@ -254,7 +265,7 @@ eg:
                                tok::utf32_string_literal);
     }
 ```
-
+[返回目录](#目录)
 ### 1.6 OMP(OpenMP)
 在basilisk的GPU中找到下面一段话：\
 `Note that this could even be implemented just as a new definition of the macros OMP_PARALLEL(), OMP() and OMP_END_PARALLEL(). However, as pointed out in the blog, without some control of data layout, performance would probably be terrible.`\
@@ -281,6 +292,7 @@ static void ompreproc (void)
 ```
 相比于 Clang 对 OpenMP 的复杂处理，Basilisk C 采用了一种更简化的方式，可能basilisk只有这样的一种写法。
 
+[返回目录](#目录)
 
 ### 1.7 file_line（文件行号指示器，例如 `#line 42 "example.c"`）
 basilisk中对行号指示器处理的比较简单，file_line() 函数解析这些行号指示器，并将行号和文件名信息存储到相应的结构中。这个机制在处理预处理器生成的文件时非常有用，因为它允许跟踪文件的源代码位置，特别是在宏展开或文件包含的情况下。\
@@ -298,6 +310,8 @@ static void file_line (AstRoot * parse, const char * text)
   //  fprintf (stderr, "%s: \"%s\" %d\n", text, file, yylineno);
 }
 ```
+[返回目录](#目录)
+
 
 ### 1.8 宏定义（@def）
 在 Basilisk C 中，使用 @def 来定义复杂的宏结构。最后需要检测`@def ... @`。\
@@ -315,6 +329,7 @@ static void bpreproc (void)
 }
 ```
 这与C语言中定义宏的方式不同，Clang 的预处理器处理 #define、#include、#pragma 等标准预处理指令，而不像 Basilisk C 通过 @def 这样的自定义语法来处理预处理指令。
+[返回目录](#目录)
 
 ### 1.9 foreach与foreach_（basilisk中的iterators）
 Basilisk C 的 foreach 是一种特定于该语言的控制结构，用于遍历网格中的单元、维度或邻居。在 Basilisk C 的词法分析器中，通过正则表达式识别不同形式的 foreach，然后根据不同的遍历需求生成相应的 Token。\
@@ -349,6 +364,8 @@ clang的Indentify处理函数`bool Lexer::LexIdentifierContinue(Token &Result, c
     MIOpt.ReadToken();
     return LexIdentifierContinue(Result, CurPtr);
 ```
+[返回目录](#目录)
+
 
 ### 1.10 部分多个词的词法分析( new vertex scalar , new face vertor , new symmetric tensor , vertex scalar , face vertor , symmetric tensor)
 basilisk通过正则表达式对这些进行识别，而clang在词法分析只是单独处理每个词(利用switch case对每个词的首字母进行分别处理)，在语法分析部分再整体处理这些词。\
@@ -362,9 +379,15 @@ basilisk通过正则表达式对这些进行识别，而clang在词法分析只�
 "face"{WS}+"vector"                     { SAST(TYPEDEF_NAME); }
 "symmetric"{WS}+"tensor"                { SAST(TYPEDEF_NAME); }
 ```
+[返回目录](#目录)
+
 
 ## 2. 语法分析
-对basilisk主要参考文件为basilisk/src/ast/yacc，对clang主要参考文件为[Parse.cpp](https://clang.llvm.org/doxygen/Parse_2Parser_8cpp_source.html)
+**对basilisk主要参考文件为basilisk/src/ast/yacc。\
+对clang主要参考文件夹为[Parse](https://clang.llvm.org/doxygen/dir_56d2d57cdd4ff12ce93058b4ec37b8e1.html)。\
+主要对[Parse.cpp](https://clang.llvm.org/doxygen/Parse_2Parser_8cpp_source.html),[ParseStmt.cpp](https://clang.llvm.org/doxygen/ParseStmt_8cpp_source.html)等文件进行参考。**
+
+[返回目录](#目录)
 
 ### 2.1 translation_unit(错误处理)
 相比于clang，basilisk添加了错误处理的部分，在clang中存在错误恢复函数(如`static bool HasFlagsSet(Parser::SkipUntilFlags L, Parser::SkipUntilFlags R)`)，错误检测函数(如`Diag(Tok, diag::err_expected_semi_after_statement);`)，对错误有一定的处理能力(如`bool Parser::SkipUntil(ArrayRef<tok::TokenKind> Toks, SkipUntilFlags Flags)`)，且clang对错误的分类较多，因此没有放在语法分析之中。\
@@ -384,6 +407,7 @@ translation_unit
 /// [C]     external-declaration
 /// [C]     translation-unit external-declaration
 ```
+[返回目录](#目录)
 
 ### 2.2 external_declaration
 #### 2.2.1 basilisk的扩展
@@ -417,6 +441,7 @@ external_declaration
       return ParseDeclarationOrFunctionDefinition(Attrs, DeclSpecAttrs, DS);
   }
 ```
+[返回目录](#目录)
 
 ### 2.3 declaration(static_assert_declaration)
 在declaration中，basilisk把static_assert_declaration加入语法分析，而clang没有。\
@@ -460,6 +485,7 @@ Parser::ParseExternalDeclaration(ParsedAttributes &Attrs,
                               DeclSpecAttrs);
     }
 ```
+[返回目录](#目录)
 
 ### 2.4 function_definition
 basilisk和clang的语法分析不同，见下：\
@@ -479,14 +505,188 @@ function_definition
 ```
 可见，basilisk把declaration_specifiers declarator合并成function_declaration处理，是为了方便对AST栈进行操作。\
 而clang并没有把这两个语法集中处理，而是直接使用decl-specs declarator这一语法。
+[返回目录](#目录)
+
+### 2.5 compound_statement
+basilisk相比于clang的语法分析少了label-declaration\
+**basilisk:**
+```yacc
+compound_statement
+	: '{' '}'
+	|
+	'{'                { stack_push (parse->stack, &($1)); $$->sym = YYSYMBOL_YYUNDEF; }
+	block_item_list
+	'}'	           { ast_pop_scope (parse->stack, $1); }
+	;
+```
+**clang:**
+```cpp
+///       compound-statement: [C99 6.8.2]
+///         { block-item-list[opt] }
+/// [GNU]   { label-declarations block-item-list } [TODO]
+```
+[返回目录](#目录)
+
+### 2.6 selection statement(对if语句分析的差异)
+basilisk相比于clang分析更简单，并没有对if语句进行多种情况考虑。clang多使用了if-statement的语法，从而使得clang的分析更加全面。\
+同时basilisk中包含了expression_error语法，该语法在分析的同时加入了错误情况的分析。\
+**basilisk:**
+```yacc
+selection_statement
+        : IF '(' expression_error ')' statement ELSE statement
+        | IF '(' expression_error ')' statement
+	| SWITCH '(' expression_error ')' statement
+	;
+
+  expression_error
+        : expression
+	| error         { $1->sym = YYSYMBOL_YYerror; }
+	;
+```
+**clang:**
+```cpp
+/// selection-statement:
+///         if-statement
+///         switch-statement
+
+/// ParseIfStatement
+///       if-statement: [C99 6.8.4.1]
+///         'if' '(' expression ')' statement
+///         'if' '(' expression ')' statement 'else' statement
+/// [C++]   'if' '(' condition ')' statement
+/// [C++]   'if' '(' condition ')' statement 'else' statement
+/// [C++23] 'if' '!' [opt] consteval compound-statement
+/// [C++23] 'if' '!' [opt] consteval compound-statement 'else' statement
+///
+```
+[返回目录](#目录)
+
+### 2.7 iteration_statement( basilisk的拓展以及分析的差异 )
+由于basilisk有不同于普通cpp的for的表达式，因此iteration_statement中在添加了这些语法分析。\
+同时basilisk对单独的字符for进行分析,目的是更好对AST语法树进行操作。\
+对于for的语法分析，basilisk分为三种情况进行处理，而clang先在for-statement识别for进行集体处理，然后再分开为各种情况进行处理。
+**basilisk:**
+```yacc
+iteration_statement
+        : WHILE '(' expression ')' statement                                            
+	| DO statement WHILE '(' expression ')' ';'
+	| for_scope '(' expression_statement expression_statement ')' statement
+	            { ast_pop_scope (parse->stack, $1); }
+	| for_scope '(' expression_statement expression_statement expression ')' statement
+		    { ast_pop_scope (parse->stack, $1); }
+	| for_declaration_statement
+	;
+
+for_declaration_statement
+        : for_scope '(' declaration expression_statement ')' statement
+	            { ast_pop_scope (parse->stack, $1); }	
+	| for_scope '(' declaration expression_statement expression ')' statement
+	            { ast_pop_scope (parse->stack, $1); }	
+	;
+```
+**clang:**
+```cpp
+/// iteration-statement:
+///         while-statement
+///         do-statement
+///         for-statement
+
+/// ParseForStatement
+///       for-statement: [C99 6.8.5.3]
+///         'for' '(' expr[opt] ';' expr[opt] ';' expr[opt] ')' statement
+///         'for' '(' declaration expr[opt] ';' expr[opt] ')' statement
+/// [C++]   'for' '(' for-init-statement condition[opt] ';' expression[opt] ')'
+/// [C++]       statement
+/// [C++0x] 'for'
+///             'co_await'[opt]    [Coroutines]
+///             '(' for-range-declaration ':' for-range-initializer ')'
+///             statement
+/// [OBJC2] 'for' '(' declaration 'in' expr ')' statement
+/// [OBJC2] 'for' '(' expr 'in' expr ')' statement
+///
+/// [C++] for-init-statement:
+/// [C++]   expression-statement
+/// [C++]   simple-declaration
+/// [C++23] alias-declaration
+///
+/// [C++0x] for-range-declaration:
+/// [C++0x]   attribute-specifier-seq[opt] type-specifier-seq declarator
+/// [C++0x] for-range-initializer:
+/// [C++0x]   expression
+/// [C++0x]   braced-init-list            [TODO]
+```
+[返回目录](#目录)
+
+### 2.8 jump-statement( goto中对identify处理的差异 )
+在对jump-statement的语法分析中，basilisk由于相比于clang多了`"vertex"{WS}+"scalar"`、`"face"{WS}+"vector"`、`"symmetric"{WS}+"tensor"`，在goto语句中需要对上述词进行识别。
+因此basilisk会多出对上述这些词(`TYPEDEF_NAME`)的分析。而`TYPEDEF_NAME`和`IDENTIFIER`统一为`generic_identifier`处理。\
+**basilisk:**
+```yacc
+jump_statement
+        : GOTO generic_identifier ';'
+	| CONTINUE ';'
+	| BREAK ';'
+	| RETURN ';'
+	| RETURN expression ';'
+	;
+
+generic_identifier
+        : IDENTIFIER
+	| TYPEDEF_NAME
+	;
+```
+```lex
+"vertex"{WS}+"scalar"                   { SAST(TYPEDEF_NAME); }
+"face"{WS}+"vector"                     { SAST(TYPEDEF_NAME); }
+"symmetric"{WS}+"tensor"                { SAST(TYPEDEF_NAME); }
+```
+[返回目录](#目录)
+
+### 2.9 labeled-statement(对Identify处理的差异)
+差异原因与[2.8 jump-statement( goto中对identify处理的差异 )](#28-jump-statement-goto中对identify处理的差异-)相同，即basilisk由于相比于clang多了`"vertex"{WS}+"scalar"`、`"face"{WS}+"vector"`、`"symmetric"{WS}+"tensor"`，在goto语句中需要对上述词进行识别。
+因此basilisk会多出对上述这些词(`TYPEDEF_NAME`)的分析。而`TYPEDEF_NAME`和`IDENTIFIER`统一为`generic_identifier`处理。\
+**basilisk:**
+```yacc
+labeled_statement
+	: generic_identifier ':' statement
+	| CASE constant_expression ':' statement
+	| DEFAULT ':' statement
+	;
+
+generic_identifier
+        : IDENTIFIER
+	| TYPEDEF_NAME
+	;
+```
+**clang:**
+```cpp
+///       labeled-statement:
+///         identifier ':' statement
+///         'case' constant-expression ':' statement
+///         'default' ':' statement
+```
+[返回目录](#目录)
+
+**clang:**
+```cpp
+///       jump-statement:
+///         'goto' identifier ';'
+///         'continue' ';'
+///         'break' ';'
+///         'return' expression[opt] ';'
+/// [GNU]   'goto' '*' expression ';'
+```
+[返回目录](#目录)
 
 
-### 2.5 basilisk 扩展
+### 2.10 basilisk 扩展
 
-#### 2.5.1 关系图
+#### 2.10.1 关系图
 下面是Basilisk C grammar extensions 的语法关系图。\
 [图片地址](picture/basilisk_puml.png)
 ![basilisk picture](picture/basilisk_puml.png)
+[返回目录](#目录)
+
 
 <!-- Gitalk 评论 start -->
 <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
