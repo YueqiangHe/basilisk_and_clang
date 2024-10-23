@@ -683,7 +683,7 @@ generic_identifier
 
 #### 2.10.1 关系图
 下面是Basilisk C grammar extensions 的语法关系图。\
-[图片地址](picture/basilisk_puml.png)
+[点击查看高清大图](picture/basilisk_puml.png)
 ![basilisk picture](picture/basilisk_puml.png)\
 [返回目录](#目录)
 
