@@ -2,6 +2,7 @@
 
 >本调研旨在评估basilisk的词法语法的分析过程。将其与clang的词法语法分析代码进行对比，从而对basilisk的迁移进行评估。
 ## 目录
+
 - [利用clang前端让basilisk扩展到C++调研](#利用clang前端让basilisk扩展到c调研)
       - [目录](#目录)
   - [1. 词法分析](#1-词法分析)
@@ -16,6 +17,7 @@
       - [1.9 foreach与foreach\_（basilisk中的iterators）](#19-foreach与foreach_basilisk中的iterators)
       - [1.10 部分多个词的词法分析( new vertex scalar , new face vertor , new symmetric tensor , vertex scalar , face vertor , symmetric tensor)](#110-部分多个词的词法分析-new-vertex-scalar--new-face-vertor--new-symmetric-tensor--vertex-scalar--face-vertor--symmetric-tensor)
   - [2. 语法分析](#2-语法分析)
+    - [translation\_unit](#translation_unit)
       - [2.1 translation\_unit(错误处理)](#21-translation_unit错误处理)
       - [2.2 external\_declaration](#22-external_declaration)
         - [2.2.1 basilisk的扩展](#221-basilisk的扩展)
@@ -34,8 +36,10 @@
       - [2.12 postfix-expression](#212-postfix-expression)
       - [2.13 argument\_expression\_list( basilisk拓展 )](#213-argument_expression_list-basilisk拓展-)
       - [2.14 initializer-list](#214-initializer-list)
-      - [2.20 basilisk 扩展( clang中没有，只有basilisk中的语法 )](#220-basilisk-扩展-clang中没有只有basilisk中的语法-)
-        - [2.20.1 关系图](#2201-关系图)
+    - [basilisk extension](#basilisk-extensions)
+      - [2.15 basilisk 扩展( clang中没有，只有basilisk中的语法 )](#215-basilisk-扩展-clang中没有只有basilisk中的语法-)
+        - [2.15.1 关系图](#2151-关系图)
+  - [3.流程差异](#3-流程差异)
 
 
 ## 1. 词法分析
@@ -878,7 +882,7 @@ basilisk还多了`'.' generic_identifier`的语法分析，这是basilisk(对词
 ![basilisk picture](picture/basilisk_puml.png)\
 [返回目录](#目录)
 
-## 3.流程差异
+## 3. 流程差异
 
 
 <!-- Gitalk 评论 start -->
