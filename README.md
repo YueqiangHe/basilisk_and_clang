@@ -4,7 +4,7 @@
 ## 目录
 
 - [利用clang前端让basilisk扩展到C++调研](#利用clang前端让basilisk扩展到c调研)
-      - [目录](#目录)
+  - [目录](#目录)
   - [1. 词法分析](#1-词法分析)
       - [1.1 对数字识别的差别（如int类型和float类型）](#11-对数字识别的差别如int类型和float类型)
       - [1.2 开头相同的运算符解析的差别（如"%="和"%"）](#12-开头相同的运算符解析的差别如和)
@@ -36,10 +36,11 @@
       - [2.12 postfix-expression](#212-postfix-expression)
       - [2.13 argument\_expression\_list( basilisk拓展 )](#213-argument_expression_list-basilisk拓展-)
       - [2.14 initializer-list](#214-initializer-list)
-    - [basilisk extension](#basilisk-extensions)
+    - [basilisk extensions](#basilisk-extensions)
       - [2.15 basilisk 扩展( clang中没有，只有basilisk中的语法 )](#215-basilisk-扩展-clang中没有只有basilisk中的语法-)
         - [2.15.1 关系图](#2151-关系图)
-  - [3.流程差异](#3-流程差异)
+  - [3. 流程差异](#3-流程差异)
+
 
 
 ## 1. 词法分析
