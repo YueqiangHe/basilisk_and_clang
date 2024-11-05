@@ -44,6 +44,8 @@
       - [3.1.1 BeginSourceFile()](#311-beginsourcefile)
       - [3.1.2 Execute()](#312-execute)
       - [3.1.3 EndSourceFile()](#313-endsourcefile)
+    - [3.2 clang的AST的生成与解析的前期准备工作](#32-clang的ast的生成与解析的前期准备工作)
+    - [3.3 clang的AST生成与解析](#33-clang的ast生成与解析)
 
 
 
@@ -924,7 +926,49 @@ basilisk还多了`'.' generic_identifier`的语法分析，这是basilisk(对词
 可能会进行后续的代码生成或错误报告。\
 清理和释放与源文件相关的资源（如文件句柄、内存等）。\
 **目标**： 完成源文件的处理，执行清理工作，准备进入下一个源文件的处理（如果有的话）。
+[返回目录](#目录)
 
+### 3.2 clang的AST的生成与解析的前期准备工作
+AST的生成与解析主要是在`Execute()`函数中调用的`ExecuteAction()`,而函数`void ASTFrontendAction::ExecuteAction()`是`Executeaction()`的子类。\
+在解析AST的前期准备工作有：\
+1.检查是否有预处理器`Preprocessor`\
+2.设立用于处理递归深度过大的回退机制的方法，防止栈溢出。`noteBottomOfStack()`。\
+3.如果支持代码补全，设立代码补全consumer`CodeCompletionConsumer`\
+4.如果 `Sema（语法分析器）`还没有创建，调用 `CI.createSema()` 来创建 `Sema` 实例。`getTranslationUnitKind()` 获取当前翻译单元的类型，`CompletionConsumer` 传递给 `Sema` 用于代码补全功能。\
+之后就可以进行AST的生成与解析。
+```cpp
+void ASTFrontendAction::ExecuteAction() {
+  CompilerInstance &CI = getCompilerInstance();
+  if (!CI.hasPreprocessor())
+    return;
+  // This is a fallback: If the client forgets to invoke this, we mark the
+  // current stack as the bottom. Though not optimal, this could help prevent
+  // stack overflow during deep recursion.
+  clang::noteBottomOfStack();
+ 
+  // FIXME: Move the truncation aspect of this into Sema, we delayed this till
+  // here so the source manager would be initialized.
+  if (hasCodeCompletionSupport() &&
+      !CI.getFrontendOpts().CodeCompletionAt.FileName.empty())
+    CI.createCodeCompletionConsumer();
+ 
+  // Use a code completion consumer?
+  CodeCompleteConsumer *CompletionConsumer = nullptr;
+  if (CI.hasCodeCompletionConsumer())
+    CompletionConsumer = &CI.getCodeCompletionConsumer();
+ 
+  if (!CI.hasSema())
+    CI.createSema(getTranslationUnitKind(), CompletionConsumer);
+ 
+  ParseAST(CI.getSema(), CI.getFrontendOpts().ShowStats,
+           CI.getFrontendOpts().SkipFunctionBodies);
+}
+```
+[返回目录](#目录)
+
+### 3.3 clang的AST生成与解析
+AST的生成与解析在`ParseAST`函数。函数在[ParseAST.cpp](https://clang.llvm.org/doxygen/ParseAST_8cpp_source.html#l00100)中。\
+以下是解析的流程。
 
 
 <!-- Gitalk 评论 start -->
