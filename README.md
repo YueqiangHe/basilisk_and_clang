@@ -40,6 +40,10 @@
       - [2.15 basilisk 扩展( clang中没有，只有basilisk中的语法 )](#215-basilisk-扩展-clang中没有只有basilisk中的语法-)
         - [2.15.1 关系图](#2151-关系图)
   - [3. 流程差异](#3-流程差异)
+    - [3.1 clang的前端编译过程总览](#31-clang的前端编译过程总览)
+      - [3.1.1 BeginSourceFile()](#311-beginsourcefile)
+      - [3.1.2 Execute()](#312-execute)
+      - [3.1.3 EndSourceFile()](#313-endsourcefile)
 
 
 
@@ -884,6 +888,43 @@ basilisk还多了`'.' generic_identifier`的语法分析，这是basilisk(对词
 [返回目录](#目录)
 
 ## 3. 流程差异
+
+### 3.1 clang的前端编译过程总览
+主要参考文件：[FrontedAction.cpp](https://clang.llvm.org/doxygen/FrontendAction_8cpp_source.html)。
+前端主要步骤可以分为三个函数:\
+`bool FrontendAction::BeginSourceFile`->`llvm::Error FrontendAction::Execute()`->`void FrontendAction::EndSourceFile()`\
+这三个函数联合起来处理了源文件从开始到结束的整个编译过程的前端阶段。\
+可以认为，BeginSourceFile() 和 EndSourceFile() 主要是作为过程的 入口 和 出口，而 Execute() 则是处理编译任务的 核心。
+#### 3.1.1 BeginSourceFile()
+这个函数是 开始处理源文件 的阶段，它的主要作用是为编译过程中的源文件创建和初始化必需的上下文对象。它的功能包括：
+配置编译器实例（CompilerInstance）。\
+初始化并设置相关的语言选项（如目标平台、语言等）。\
+初始化 Preprocessor，ASTContext 和 Sema（语义分析器）等对象。\
+根据需要设置其它的编译器设置（比如是否支持代码补全等）。
+\
+**目标：** 初始化源文件的处理，并为后续的代码解析、语义检查做准备。\
+
+在 Clang 中，BeginSourceFile 是开始编译一个源文件时的准备阶段。
+
+#### 3.1.2 Execute()
+这个函数是整个前端编译过程中的 核心，它负责执行实际的编译任务，包括源代码的解析、生成 AST 以及其他关键步骤。它的工作包括：
+
+如果启用了计时器，则会在执行编译时计算时间。\
+调用 ExecuteAction() 执行具体的编译任务，ExecuteAction() 中会调用 ParseAST() 等方法来解析源代码并生成 AST。\
+在解析并生成 AST 后，它还可能进行一些额外的处理，例如构建全局模块索引等。\
+\
+**目标**： 进行源代码的实际处理，包括解析、生成 AST 以及一些额外的处理。\
+
+这也是 Clang 前端处理的主要部分，它会根据不同的前端操作（比如生成中间表示、语法检查、错误报告等）调用不同的行为。
+
+#### 3.1.3 EndSourceFile()
+这个函数是 源文件处理的结束阶段，它负责在源文件处理完成后进行清理和资源释放。它的工作包括：
+
+完成 AST 生成和相关的数据结构处理。\
+可能会进行后续的代码生成或错误报告。\
+清理和释放与源文件相关的资源（如文件句柄、内存等）。\
+目标： 完成源文件的处理，执行清理工作，准备进入下一个源文件的处理（如果有的话）。
+
 
 
 <!-- Gitalk 评论 start -->
