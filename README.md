@@ -48,6 +48,9 @@
     - [3.3 clang的AST生成与解析](#33-clang的ast生成与解析)
     - [3.4 basilisk的AST树生成总览](#34-basilisk的ast树生成总览)
     - [3.5 clang与basilisk的AST语法树生成差异比较](#35-clang与basilisk的ast语法树生成差异比较)
+      - [3.5.1 输入文件](#351-输入文件)
+      - [3.5.2 AST数据结构管理](#352-ast数据结构管理)
+      - [3.5.3 AST操作](#353-ast操作)
 
 
 
@@ -928,6 +931,7 @@ basilisk还多了`'.' generic_identifier`的语法分析，这是basilisk(对词
 可能会进行后续的代码生成或错误报告。\
 清理和释放与源文件相关的资源（如文件句柄、内存等）。\
 **目标**： 完成源文件的处理，执行清理工作，准备进入下一个源文件的处理（如果有的话）。
+
 [返回目录](#目录)
 
 ### 3.2 clang的AST的生成与解析的前期准备工作
@@ -1035,6 +1039,35 @@ basilisk的AST树生成总流程在`endfor()`函数中，生成流程参考如�
 
 ### 3.5 clang与basilisk的AST语法树生成差异比较
 
+#### 3.5.1 输入文件
+**basilisk:**
+
+这段代码从文件中逐字读取字符并存储到 buffer，然后通过 ast_parse 函数将其解析为 AST。
+
+它读取了两个文件：fin（用户代码）和 BASILISK/ast/defaults.h（默认设置文件），分别用于主程序解析和默认设置的加载。
+
+**clang:**
+
+Clang 通过 Preprocessor 进行预处理，处理 #include、#define 等指令，然后将预处理过的代码传递给 Parser 进行解析。
+
+[返回目录](#目录)
+
+#### 3.5.2 AST数据结构管理
+**basilisk:**
+
+ast_parse 函数中使用 allocator 和 stack 进行 AST 节点的管理。它通过分配器管理节点内存，通过栈来管理 AST 的层级结构。
+
+使用 allocate、stack_push 等函数处理 AST 节点的分配和栈操作。
+
+**clang:**
+
+Clang 使用 ASTContext 管理 AST 的所有节点，包括内存分配、类型管理和作用域处理。ASTContext 确保了 AST 的一致性和生命周期管理。
+
+Clang 使用符号表和作用域管理不同作用域中的符号，支持多层次的变量、函数、类和模板实例。
+
+[返回目录](#目录)
+
+#### 3.5.3 AST操作
 
 
 <!-- Gitalk 评论 start -->
