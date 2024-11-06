@@ -46,6 +46,8 @@
       - [3.1.3 EndSourceFile()](#313-endsourcefile)
     - [3.2 clang的AST的生成与解析的前期准备工作](#32-clang的ast的生成与解析的前期准备工作)
     - [3.3 clang的AST生成与解析](#33-clang的ast生成与解析)
+    - [3.4 basilisk的AST树生成总览](#34-basilisk的ast树生成总览)
+    - [3.5 clang与basilisk的AST语法树生成差异比较](#35-clang与basilisk的ast语法树生成差异比较)
 
 
 
@@ -968,7 +970,71 @@ void ASTFrontendAction::ExecuteAction() {
 
 ### 3.3 clang的AST生成与解析
 AST的生成与解析在`ParseAST`函数。函数在[ParseAST.cpp](https://clang.llvm.org/doxygen/ParseAST_8cpp_source.html#l00100)中。\
-以下是解析的流程。
+以下是解析的流程。\
+1、创建一个Sema实例。`Sema`用于执行语法分析和AST生成工作。在编译器的前端中，Sema 是一个关键组件，位于词法分析和语法分析完成之后，为生成抽象语法树（AST）和进行类型检查等操作提供支持。
+```cpp
+std::unique_ptr<Sema> S(
+    new Sema(PP, Ctx, *Consumer, TUKind, CompletionConsumer));
+```
+
+2、如果需要打印统计信息，则启用声明和语句的统计。
+```cpp
+if (PrintStats) {
+    Decl::EnableStatistics();
+    Stmt::EnableStatistics();
+}
+```
+
+3、创建`Parser`实例，负责生成AST。
+```cpp
+llvm::CrashRecoveryContextCleanupRegistrar<Parser> CleanupParser(ParseOP.get());
+```
+
+4、读入文件，即开始处理已经预处理完成的文件。(即对宏已经展开完成)
+```cpp
+S.getPreprocessor().EnterMainSourceFile();
+```
+
+5、如果存在外部 AST 源（比如预编译头文件（PCH）、模块（Modules）），则开始翻译单元的处理。
+```cpp
+ExternalASTSource *External = S.getASTContext().getExternalSource();
+if (External)
+    External->StartTranslationUnit(Consumer);
+```
+
+6、检查词法分析器，初始化Parser，并开始解析顶层声明（ParseFirstTopLevelDecl 和 ParseTopLevelDecl）
+```cpp
+for (bool AtEOF = P.ParseFirstTopLevelDecl(ADecl, ImportState); !AtEOF;
+     AtEOF = P.ParseTopLevelDecl(ADecl, ImportState)) {
+    if (ADecl && !Consumer->HandleTopLevelDecl(ADecl.get()))
+        return;
+}
+```
+
+7、处理由 #pragma weak 指令生成的顶层声明。#pragma weak 是一种编译指令，用于定义弱符号（weak symbol），它允许符号在链接时变为可选的，即使该符号不存在，链接也不会报错。
+```cpp
+for (Decl *D : S.WeakTopLevelDecls())
+    Consumer->HandleTopLevelDecl(DeclGroupRef(D));
+```
+
+8、处理TranslationUnit
+```cpp
+Consumer->HandleTranslationUnit(S.getASTContext());
+```
+
+9、打印统计信息
+
+[返回目录](#目录)
+
+### 3.4 basilisk的AST树生成总览
+basilisk的AST树生成总流程在`endfor()`函数中，生成流程参考如下图片。
+
+[点击查看高清大图](picture/basilisk_endfor().png)
+![basilisk picture](picture/basilisk_endfor().png)\
+[返回目录](#目录)
+
+### 3.5 clang与basilisk的AST语法树生成差异比较
+
 
 
 <!-- Gitalk 评论 start -->
