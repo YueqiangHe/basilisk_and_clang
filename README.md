@@ -1114,8 +1114,8 @@ basilisk通过函数指针依次对语法树进行遍历操作。
 2.Diagonalize:检查是否包含 diagonalize 宏调用，如果存在，则会遍历并对每一个相关表达式节点进行对角线化操作。这可以用于矩阵或张量等结构的优化，生成对角线化代码。\
 3.foreach 循环( face 和 stencil ):foreach_face 和 foreach_face_stencil：针对 foreach 循环中的面循环进行操作。\
 4.非模板（Stencil）情况下的 foreach 循环：若该 foreach 循环不是模板（Stencil）操作，则对循环中的常量字段组合进行处理。\
-**5.sym_function_definition：检查并对点函数定义中的字段组合进行处理，尤其是处理使用了常量（const）字段的情况。\
-**6.数组访问操作(sym_array_access)：对数组访问节点调用 ast_stencil_access 函数进行模板操作的设置和转换，确保数组访问在模板循环中正确执行。\
+5.sym_function_definition：检查并对点函数定义中的字段组合进行处理，尤其是处理使用了常量（const）字段的情况。\
+6.数组访问操作(sym_array_access)：对数组访问节点调用 ast_stencil_access 函数进行模板操作的设置和转换，确保数组访问在模板循环中正确执行。\
 7.foreach_inner 循环中的 break 语句操作。\
 8.常量和全局字段的初始化和分配。\
 9.函数调用的内存分配跟踪和模板化(sym_function_call)：将 malloc、free 等内存分配函数替换为带跟踪功能的版本，并为模板化函数（Stencil functions）生成适当的代码。\
@@ -1124,7 +1124,7 @@ basilisk通过函数指针依次对语法树进行遍历操作。
 12.事件的定义(sym_event_definition)：对事件定义进行解析，确保事件的名字唯一化，并生成对应的表达式和注册代码。还生成事件的初始化代码和动作函数。\
 13.自动字段的去分配(sym_jump_statement)：在跳转语句（如 goto、return）前插入自动字段去分配的代码，以避免内存泄漏或未定义行为。\
 14.边界 ID 的定义(sym_external_declaration：)检查并处理 bid 类型的边界定义，生成相应的初始化代码。\
-15.自动字段的分配和去分配(结尾符 } 和 sym_compound_statement)：对字段进行自动分配和去分配，确保作用域内的字段在其生命周期结束后得到释放。\
+15.自动字段的分配和去分配(结尾符 } 和 sym_compound_statement)：对字段进行自动分配和去分配，确保作用域内的字段在其生命周期结束后得到释放。
 
 **第三次pass**的主要作用：(`maps`)\
 在第三次 pass 中，maps 函数主要负责将 非模板化的 foreach 循环（即 foreach_statement）转化为更通用的循环形式，特别是将 foreach_face 替换为通用的 foreach_face_generic，并在非 foreach_face 的循环中添加预定义的映射
