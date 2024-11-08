@@ -1057,6 +1057,7 @@ Clang 通过 Preprocessor 进行预处理，处理 #include、#define 等指令�
 
 #### 3.5.2 AST数据结构管理
 **basilisk:**
+
 1、ast_parse 、 ast_parse_file 的ast节点处理：
 
 ast_parse 、 ast_parse_file 函数中使用 allocator 和 stack 进行 AST 节点的管理。它通过分配器管理节点内存，通过栈来管理 AST 的层级结构。
@@ -1093,71 +1094,73 @@ Clang 使用 ASTContext 管理 AST 的所有节点，包括内存分配、类型
 #### 3.5.3 pass
 
 **basilisk:**
+
 basilisk通过函数指针依次对语法树进行遍历操作。
 
-一次进行六次pass：`global_boundaries_and_stencils`, `translate`, `maps`, `stencils`, `macros`, `NULL`
+**一次进行六次pass：**`global_boundaries_and_stencils`, `translate`, `maps`, `stencils`, `macros`, `NULL`
 
-第一次 pass 的主要作用：(`global_boundaries_and_stencils`)\
-**1.**解析错误处理：检测并报告 Basilisk C 特有的解析错误。\
-**2.**常量字段检查：确保常量字段的正确性，包括 const 修饰和初始化处理。\
-**3.**边界条件处理：为常量字段和局部边界条件生成相应的代码。\
-**4.**模板（Stencil）操作：生成并调整 foreach 模板的相关代码，以支持 GPU 和并行操作。\
-**5.**Einstein 求和：展开 Einstein 求和运算，为物理模拟生成所需的代码。\
+**第一次 pass** 的主要作用：(`global_boundaries_and_stencils`)\
+1.解析错误处理：检测并报告 Basilisk C 特有的解析错误。\
+2.常量字段检查：确保常量字段的正确性，包括 const 修饰和初始化处理。\
+3.边界条件处理：为常量字段和局部边界条件生成相应的代码。\
+4.模板（Stencil）操作：生成并调整 foreach 模板的相关代码，以支持 GPU 和并行操作。\
+5.Einstein 求和：展开 Einstein 求和运算，为物理模拟生成所需的代码。\
 
-第二次pass的主要作用：(`translate`)\
+**第二次pass**的主要作用：(`translate`)\
 第二次 pass 主要实现了对各类语法节点的具体转换，使代码符合 Basilisk 的自定义语义需求。
 
-**主要操作：**\
-**1.**foreach_dimension 相关操作:处理与 foreach_dimension 相关的节点。\
-**2.**Diagonalize:检查是否包含 diagonalize 宏调用，如果存在，则会遍历并对每一个相关表达式节点进行对角线化操作。这可以用于矩阵或张量等结构的优化，生成对角线化代码。\
-**3.**foreach 循环( face 和 stencil ):foreach_face 和 foreach_face_stencil：针对 foreach 循环中的面循环进行操作。\
-**4.**非模板（Stencil）情况下的 foreach 循环：若该 foreach 循环不是模板（Stencil）操作，则对循环中的常量字段组合进行处理。\
-**5.**sym_function_definition：检查并对点函数定义中的字段组合进行处理，尤其是处理使用了常量（const）字段的情况。\
-**6.**数组访问操作(sym_array_access)：对数组访问节点调用 ast_stencil_access 函数进行模板操作的设置和转换，确保数组访问在模板循环中正确执行。\
-**7.**foreach_inner 循环中的 break 语句操作。\
-**8.**常量和全局字段的初始化和分配。\
-**9.**函数调用的内存分配跟踪和模板化(sym_function_call)：将 malloc、free 等内存分配函数替换为带跟踪功能的版本，并为模板化函数（Stencil functions）生成适当的代码。\
-**10.**new 和 automatic 字段的声明(sym_NEW_FIELD)：用于处理 new 和 automatic 的字段声明，生成自动分配和去分配代码。\
-**11.**静态 FILE * 声明(sym_declaration)：对静态文件指针声明进行初始化，确保文件指针在合适的上下文中被初始化。\
-**12.**事件的定义(sym_event_definition)：对事件定义进行解析，确保事件的名字唯一化，并生成对应的表达式和注册代码。还生成事件的初始化代码和动作函数。\
-**13.**自动字段的去分配(sym_jump_statement)：在跳转语句（如 goto、return）前插入自动字段去分配的代码，以避免内存泄漏或未定义行为。\
-**14.**边界 ID 的定义(sym_external_declaration：)检查并处理 bid 类型的边界定义，生成相应的初始化代码。\
-**15.**自动字段的分配和去分配(结尾符 } 和 sym_compound_statement)：对字段进行自动分配和去分配，确保作用域内的字段在其生命周期结束后得到释放。\
+主要操作：\
+1.foreach_dimension 相关操作:处理与 foreach_dimension 相关的节点。\
+2.Diagonalize:检查是否包含 diagonalize 宏调用，如果存在，则会遍历并对每一个相关表达式节点进行对角线化操作。这可以用于矩阵或张量等结构的优化，生成对角线化代码。\
+3.foreach 循环( face 和 stencil ):foreach_face 和 foreach_face_stencil：针对 foreach 循环中的面循环进行操作。\
+4.非模板（Stencil）情况下的 foreach 循环：若该 foreach 循环不是模板（Stencil）操作，则对循环中的常量字段组合进行处理。\
+**5.sym_function_definition：检查并对点函数定义中的字段组合进行处理，尤其是处理使用了常量（const）字段的情况。\
+**6.数组访问操作(sym_array_access)：对数组访问节点调用 ast_stencil_access 函数进行模板操作的设置和转换，确保数组访问在模板循环中正确执行。\
+7.foreach_inner 循环中的 break 语句操作。\
+8.常量和全局字段的初始化和分配。\
+9.函数调用的内存分配跟踪和模板化(sym_function_call)：将 malloc、free 等内存分配函数替换为带跟踪功能的版本，并为模板化函数（Stencil functions）生成适当的代码。\
+10.new 和 automatic 字段的声明(sym_NEW_FIELD)：用于处理 new 和 automatic 的字段声明，生成自动分配和去分配代码。\
+11.静态 FILE * 声明(sym_declaration)：对静态文件指针声明进行初始化，确保文件指针在合适的上下文中被初始化。\
+12.事件的定义(sym_event_definition)：对事件定义进行解析，确保事件的名字唯一化，并生成对应的表达式和注册代码。还生成事件的初始化代码和动作函数。\
+13.自动字段的去分配(sym_jump_statement)：在跳转语句（如 goto、return）前插入自动字段去分配的代码，以避免内存泄漏或未定义行为。\
+14.边界 ID 的定义(sym_external_declaration：)检查并处理 bid 类型的边界定义，生成相应的初始化代码。\
+15.自动字段的分配和去分配(结尾符 } 和 sym_compound_statement)：对字段进行自动分配和去分配，确保作用域内的字段在其生命周期结束后得到释放。\
 
-第三次pass的主要作用：(`maps`)\
+**第三次pass**的主要作用：(`maps`)\
 在第三次 pass 中，maps 函数主要负责将 非模板化的 foreach 循环（即 foreach_statement）转化为更通用的循环形式，特别是将 foreach_face 替换为通用的 foreach_face_generic，并在非 foreach_face 的循环中添加预定义的映射
 
-第四次pass的主要作用：(`stencils`)\
+**第四次pass**的主要作用：(`stencils`)\
 在第四次 pass 中，stencils 函数主要处理 Basilisk 代码中的 `stencil` 和`循环` 操作。实现标准化和泛化、并行支持、代码简化。
 
-**主要操作：**\
-**1.**处理 foreach_statement。\
-**2.**内层 foreach 语句。\
-**3.**特定宏的处理：\
+主要操作：\
+1.处理 foreach_statement。\
+2.内层 foreach 语句。\
+3.特定宏的处理：\
   针对 is_face_* 和 _stencil_is_face_* 等操作符，根据 map 表内容为其生成 stencil 对应的处理代码。
   若检测到 map 语句，将其从语法树中移除，以免影响最终代码。\
-**4.**处理 Point point 类型：Point point 是一个过时的表达，函数会给出警告并转换为 foreach_point/region\
-**5.**隐藏特定关键字：将 sym_MAYBECONST 和一些特定的类型（如 face vector、vertex scalar）隐藏或简化。\
-**6.**移除无效语句：对于 _val_higher_dimension 这种不会对计算产生效果的表达式，直接移除以减少编译器警告。
+4.处理 Point point 类型：Point point 是一个过时的表达，函数会给出警告并转换为 foreach_point/region\
+5.隐藏特定关键字：将 sym_MAYBECONST 和一些特定的类型（如 face vector、vertex scalar）隐藏或简化。\
+6.移除无效语句：对于 _val_higher_dimension 这种不会对计算产生效果的表达式，直接移除以减少编译器警告。
 
-第五次pass的主要作用：(`macro`)\
+**第五次pass**的主要作用：(`macro`)\
 专门用于处理那些 在 Basilisk C 语法中未定义的宏。它聚合了所有基于宏的转换，这些转换需要应用于语法树但在 Basilisk 的基础语法中并未直接支持。
 
-第六次pass的主要作用：(`NULL`)\
-进行检查操作。
+**第六次pass**的主要作用：(`NULL`)\
+进行收尾、检查操作。
 
 **clang:**
+
 clang中的pass操作：(参考：[ParseAST.cpp](https://clang.llvm.org/doxygen/ParseAST_8cpp_source.html#l00100))\
 clang中没有类似basilisk对pass的整体操作，但是也有对AST树的遍历操作。
 
-1、初始化了预处理器并进入主源文件。预处理器会展开宏、处理 #include 指令等。\
+**1、**初始化了预处理器并进入主源文件。预处理器会展开宏、处理 #include 指令等。\
 类似basilisk的解析头文件(`/ast/defaults.h`、`/ast/init_solver.h`)的操作。
 
 ```cpp 
 S.getPreprocessor().EnterMainSourceFile();
 ```
 
-2、如果有外部的 AST 源，则启动翻译单元。这里负责整合外部的 AST 数据源。\
+**2、**如果有外部的 AST 源，则启动翻译单元。这里负责整合外部的 AST 数据源。\
 类似basilisk的解析头文件的操作后作为parent树进行继续解析的操作。
 
 ```cpp
@@ -1166,7 +1169,7 @@ if (External)
   External->StartTranslationUnit(Consumer);
 ```
 
-3、解析顶层声明：在这里，Parser 对每个顶层声明进行解析。这是核心的解析 pass，负责将代码转换成 AST 节点并交给 ASTConsumer 处理。每个声明的解析和处理可以看作一个小的 pass。\
+**3、**解析顶层声明：在这里，Parser 对每个顶层声明进行解析。这是核心的解析 pass，负责将代码转换成 AST 节点并交给 ASTConsumer 处理。每个声明的解析和处理可以看作一个小的 pass。\
 类似于basilisk的第二次pass。
 ```cpp
 for (bool AtEOF = P.ParseFirstTopLevelDecl(ADecl, ImportState); !AtEOF;
@@ -1176,10 +1179,10 @@ for (bool AtEOF = P.ParseFirstTopLevelDecl(ADecl, ImportState); !AtEOF;
 }
 ```
 
-4、处理 #pragma weak 生成的声明。处理特定的编译指令生成的声明。\
+**4、**处理 #pragma weak 生成的声明。处理特定的编译指令生成的声明。\
 类似basilisk的第五次pass。
 
-5、处理整个翻译单元：在所有声明处理完成后，调用 HandleTranslationUnit 来处理整个翻译单元。这可以视为最后一个 pass，完成所有声明后执行的收尾工作，可能涉及最终的代码生成或其他操作。\
+**5、**处理整个翻译单元：在所有声明处理完成后，调用 HandleTranslationUnit 来处理整个翻译单元。这可以视为最后一个 pass，完成所有声明后执行的收尾工作，可能涉及最终的代码生成或其他操作。\
 类似basilisk的第六次pass。(NULL)
 
 ```cpp
@@ -1201,7 +1204,7 @@ Consumer->HandleTranslationUnit(S.getASTContext());
 
 3、ast_parse()操作：扩展到解析TranslationUnit的操作。
 
-4、得到TranslateData操作：新增一个独立的数据结构，并进行独自编写函数进行管理（工作量会较大）。可以考虑在ASTContext进行数据结构扩展。
+4、得到TranslateData操作：新增一个独立的数据结构，并进行独自编写函数进行管理（工作量会较大）。也可以考虑在ASTContext进行数据结构扩展。
 
 5、进行编译器的pass操作：可以直接按照流程扩展，并编写函数实现不同得到遍历操作。
 
