@@ -11,3 +11,5 @@
 ### 2、项目源码
 
 项目源码在文件夹[llvm-project](/llvm-project/)中。
+
+感谢参考书籍[Learn LLVM 17](https://www.wangjunwei.top/books/learn_llvm_17/)
