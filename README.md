@@ -1,12 +1,12 @@
 # basilisk_and_clang
 
-[baislisk](http://basilisk.fr/Front%20Page)is an open source software for solving partial differential equations on adaptive rectangular grids.
+[baislisk](http://basilisk.fr/Front%20Page) is an open source software for solving partial differential equations on adaptive rectangular grids.
 
 This project aims to extend basilisk to C++ syntax by modifying clang. This allows basilisk to generate correct syntax trees.
 
 ### 1、Survey
 
-The feasibility analysis of the project is in the folder survey.[survey](/survey/README.md)中。
+The feasibility analysis of the project is in the folder survey.[survey](/survey/README.md)
 
 ### 2、Project source code
 
