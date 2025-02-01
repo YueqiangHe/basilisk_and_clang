@@ -1,15 +1,15 @@
 # basilisk_and_clang
 
-[baislisk](http://basilisk.fr/Front%20Page)是一个开源软件，用于解决自适应直角坐标网格上的偏微分方程。
+[baislisk](http://basilisk.fr/Front%20Page)is an open source software for solving partial differential equations on adaptive rectangular grids.
 
-本项目旨在通过修改clang,把basilisk扩展到C++的语法中。使得basilisk可以生成正确的语法树。
+This project aims to extend basilisk to C++ syntax by modifying clang. This allows basilisk to generate correct syntax trees.
 
-### 1、调研
+### 1、Survey
 
-对项目的可行性分析在文件夹[survey](/survey/README.md)中。
+The feasibility analysis of the project is in the folder survey.[survey](/survey/README.md)中。
 
-### 2、项目源码
+### 2、Project source code
 
-项目源码在文件夹[llvm-project](/llvm-project)中。
+The project source code is in the folder llvm-project.[llvm-project](/llvm-project)
 
-感谢参考书籍[Learn LLVM 17](https://www.wangjunwei.top/books/learn_llvm_17/)
+Thanks to the reference book[Learn LLVM 17](https://www.wangjunwei.top/books/learn_llvm_17/)
