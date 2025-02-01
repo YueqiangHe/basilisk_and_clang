@@ -6,7 +6,7 @@ This project aims to extend basilisk to C++ syntax by modifying clang. This allo
 
 ### 1、Survey
 
-The feasibility analysis of the project is in the folder survey.[survey](/survey/README.md)
+The feasibility analysis of the project is in the folder survey.[survey](https://yueqianghe.github.io/basilisk_and_clang/survey/)
 
 ### 2、Project source code
 
